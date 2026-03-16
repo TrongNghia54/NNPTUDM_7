@@ -43,6 +43,10 @@ let reservationSchema = mongoose.Schema({
     expiredIn: {
         type: Date,
         required: true
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
     }
 })
 module.exports = mongoose.model('reservation',reservationSchema)
