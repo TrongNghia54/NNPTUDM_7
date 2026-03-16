@@ -5,6 +5,7 @@ let bcrypt = require('bcrypt')
 let jwt = require('jsonwebtoken')
 let { checkLogin } = require('../utils/authHandler')
 let crypto = require('crypto')
+let { sendMail } = require('../utils/mailHandler')
 
 
 router.post('/register', async function (req, res, next) {
@@ -72,6 +73,8 @@ router.post('/forgotpassword', async function (req, res, next) {
     console.log(user.forgotPasswordToken);
     await user.save();
     res.send("gui mail reset pass")
+
+    await sendMail(user.email, "http://localhost:3000/auth/resetpassword/" + user.forgotPasswordToken)
     return;
   }
   res.send("email khong ton tai")
@@ -79,7 +82,7 @@ router.post('/forgotpassword', async function (req, res, next) {
 router.post('/resetpassword/:token', async function (req, res, next) {
   let token = req.params.token;
   let newPassword = req.body.password;
-  let getUser =  await userController.FindByToken(token);
+  let getUser = await userController.FindByToken(token);
   console.log(getUser);
   if (getUser) {
     getUser.password = newPassword;

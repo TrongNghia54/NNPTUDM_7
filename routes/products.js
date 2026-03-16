@@ -1,8 +1,10 @@
 var express = require('express');
 var router = express.Router();
 let productModel = require('../schemas/products')
+let InventoryModel = require('../schemas/inventories')
 let { ConvertTitleToSlug } = require('../utils/titleHandler')
-let { getMaxID } = require('../utils/IdHandler')
+let { getMaxID } = require('../utils/IdHandler');
+const { default: mongoose } = require('mongoose');
 
 //getall
 router.get('/', async function (req, res, next) {
@@ -44,31 +46,32 @@ router.get('/:id', async function (req, res, next) {
 
 
 router.post('/', async function (req, res, next) {
-  let newItem = new productModel({
-    title: req.body.title,
-    slug: ConvertTitleToSlug(req.body.title),
-    price: req.body.price,
-    description: req.body.description,
-    category: req.body.category
-  })
-  await newItem.save()
-  res.send(newItem);
-  // let newObj = {
-  //   id: (getMaxID(data) + 1) + '',
-  //   title: req.body.title,
-  //   slug: ConvertTitleToSlug(req.body.title),
-  //   price: req.body.price,
-  //   description: req.body.description,
-  //   category: req.body.category,
-  //   images: req.body.images,
-  //   creationAt: new Date(Date.now()),
-  //   updatedAt: new Date(Date.now())
-  // }
-  // data.push(newObj);
-  // console.log(data);
-  // res.send(newObj);
-  // //console.log(g);
-
+  let session = await mongoose.startSession();
+  let transaction = session.startTransaction()
+  try {
+    let newItem = new productModel({
+      title: req.body.title,
+      slug: ConvertTitleToSlug(req.body.title),
+      price: req.body.price,
+      description: req.body.description,
+      category: req.body.category
+    })
+    let newProduct = await newItem.save({ session });
+    console.log(newProduct);
+    let newInventory = new InventoryModel({
+      product: newProduct._id,
+      stock: -1
+    })
+    newInventory = await newInventory.save({ session });
+    await newInventory.populate('product')
+    await session.commitTransaction()
+    session.endSession()
+    res.send(newInventory);
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession()
+    res.send(error.message);
+  }
 })
 router.put('/:id', async function (req, res, next) {
   let id = req.params.id;
